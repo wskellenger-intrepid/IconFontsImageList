@@ -425,6 +425,8 @@ end;
 {$IFNDEF GDI+}
 procedure TIconFontsImageListEditor.SetImageMaskColor(Color: TColor);
 begin
+  if SelectedIcon = nil then
+    Exit;
   SelectedIcon.MaskColor := Color;
   UpdateGUI;
 end;
@@ -472,48 +474,64 @@ end;
 
 procedure TIconFontsImageListEditor.SetImageFontColor(Color: TColor);
 begin
+  if SelectedIcon = nil then
+    Exit;
   SelectedIcon.FontColor := Color;
   UpdateGUI;
 end;
 
 procedure TIconFontsImageListEditor.SetImageFontIconDec(IconDec: Integer);
 begin
+  if SelectedIcon = nil then
+    Exit;
   SelectedIcon.FontIconDec := IconDec;
   BuildList(SelectedIcon.Index);
 end;
 
 procedure TIconFontsImageListEditor.SetImageFontIconHex(IconHex: String);
 begin
+  if SelectedIcon = nil then
+    Exit;
   SelectedIcon.FontIconHex := IconHex;
   BuildList(SelectedIcon.Index);
 end;
 
 procedure TIconFontsImageListEditor.SetImageIconName(Name: String);
 begin
+  if SelectedIcon = nil then
+    Exit;
   SelectedIcon.Name := Name;
   BuildList(SelectedIcon.Index);
 end;
 
 procedure TIconFontsImageListEditor.SetImageFontName(FontName: TFontName);
 begin
+  if SelectedIcon = nil then
+    Exit;
   SelectedIcon.FontName := FontName;
   BuildList(SelectedIcon.Index);
 end;
 
 procedure TIconFontsImageListEditor.SetImageFontColor2(Color: TColor);
 begin
+  if SelectedIcon = nil then
+    Exit;
   SelectedIcon.FontColor2 := Color;
   UpdateGUI;
 end;
 
 procedure TIconFontsImageListEditor.SetImageFontIcon2Dec(IconDec: Integer);
 begin
+  if SelectedIcon = nil then
+    Exit;
   SelectedIcon.FontIcon2Dec := IconDec;
   UpdateGUI;
 end;
 
 procedure TIconFontsImageListEditor.SetImageFontIcon2Hex(IconHex: String);
 begin
+  if SelectedIcon = nil then
+    Exit;
   SelectedIcon.FontIcon2Hex := IconHex;
   UpdateGUI;
 end;
@@ -1208,7 +1226,7 @@ end;
 
 procedure TIconFontsImageListEditor.CategoryEditExit(Sender: TObject);
 begin
-  if FUpdating then Exit;
+  if FUpdating or (SelectedIcon = nil) then Exit;
   if SelectedIcon.Category <> CategoryEdit.Text then
   begin
     SelectedIcon.Category := CategoryEdit.Text;
