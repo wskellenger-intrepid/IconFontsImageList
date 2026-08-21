@@ -123,6 +123,18 @@ type
     IconLeftMarginPanel: TPanel;
     ZoomLabel: TLabel;
     ZoomSpinEdit: TSpinEdit;
+    DuotoneCheckBox: TCheckBox;
+    DuotoneOffsetLabel: TLabel;
+    DuotoneOffsetEdit: TEdit;
+    DuotoneOpacityLabel: TLabel;
+    DuotoneOpacitySpinEdit: TSpinEdit;
+    FontColor2Label: TLabel;
+    FontColor2: TColorBox;
+    FontIcon2HexLabel: TLabel;
+    FontIcon2Hex: TEdit;
+    FontIcon2DecLabel: TLabel;
+    FontIcon2Dec: TSpinEdit;
+    Pick2ndGlyphButton: TButton;
     procedure FormCreate(Sender: TObject);
     procedure ApplyButtonClick(Sender: TObject);
     procedure ClearAllButtonClick(Sender: TObject);
@@ -162,6 +174,13 @@ type
     procedure SetCategoriesButtonClick(Sender: TObject);
     procedure CategoryEditExit(Sender: TObject);
     procedure ZoomSpinEditChange(Sender: TObject);
+    procedure DuotoneCheckBoxClick(Sender: TObject);
+    procedure DuotoneOffsetEditExit(Sender: TObject);
+    procedure DuotoneOpacitySpinEditChange(Sender: TObject);
+    procedure FontColor2Change(Sender: TObject);
+    procedure FontIcon2DecChange(Sender: TObject);
+    procedure FontIcon2HexExit(Sender: TObject);
+    procedure Pick2ndGlyphButtonClick(Sender: TObject);
   private
     FSelectedCategory: string;
     FSourceList, FEditingList: TIconFontsImageListBase;
@@ -188,6 +207,9 @@ type
     procedure SetImageFontColor(Color: TColor);
     procedure SetImageFontIconDec(IconDec: Integer);
     procedure SetImageFontIconHex(IconHex: String);
+    procedure SetImageFontColor2(Color: TColor);
+    procedure SetImageFontIcon2Dec(IconDec: Integer);
+    procedure SetImageFontIcon2Hex(IconHex: String);
     procedure SetImageIconName(Name: String);
     procedure SetImageFontName(FontName: TFontName);
     function SelectedIcon: TIconFontItem;
@@ -326,6 +348,11 @@ begin
         FSourceList.FontColor := AImageCollection.FontColor;
         FSourceList.MaskColor := AImageCollection.MaskColor;
         FSourceList.Zoom := AImageCollection.Zoom;
+        {$IFDEF GDI+}
+        FSourceList.Duotone := AImageCollection.Duotone;
+        FSourceList.DuotoneOffset := AImageCollection.DuotoneOffset;
+        FSourceList.DuotoneOpacity := AImageCollection.DuotoneOpacity;
+        {$ENDIF}
         ImageListGroupBox.Visible := False;
         FSourceList.IconFontItems.Assign(AImageCollection.IconFontItems);
         FEditingList.Assign(FSourceList);
@@ -343,6 +370,12 @@ begin
           AImageCollection.FontColor := DefaultFontColorColorBox.Selected;
           AImageCollection.MaskColor := DefaultMaskColorColorBox.Selected;
           AImageCollection.Zoom := ZoomSpinEdit.Value;
+          {$IFDEF GDI+}
+          AImageCollection.Duotone := DuotoneCheckBox.Checked;
+          if Length(DuotoneOffsetEdit.Text) > 0 then
+            AImageCollection.DuotoneOffset := StrToInt('$' + DuotoneOffsetEdit.Text);
+          AImageCollection.DuotoneOpacity := DuotoneOpacitySpinEdit.Value;
+          {$ENDIF}
         finally
           Screen.Cursor := crDefault;
         end;
@@ -409,6 +442,26 @@ begin
   FCharMap.Show;
 end;
 
+procedure TIconFontsImageListEditor.Pick2ndGlyphButtonClick(Sender: TObject);
+var
+  LCharMap: TIconFontsCharMapForm;
+  LSelectedIconFont: TIconFontItem;
+begin
+  if SelectedIcon = nil then
+    Exit;
+  LCharMap := TIconFontsCharMapForm.CreateForFont(Self, SelectedIcon.FontNameOfIcon);
+  try
+    if LCharMap.ShowModal = mrOk then
+    begin
+      LSelectedIconFont := LCharMap.SelectedIconFont;
+      if Assigned(LSelectedIconFont) then
+        SetImageFontIcon2Dec(LSelectedIconFont.FontIconDec);
+    end;
+  finally
+    LCharMap.Free;
+  end;
+end;
+
 procedure TIconFontsImageListEditor.StoreBitmapCheckBoxClick(Sender: TObject);
 begin
   {$IFDEF HasStoreBitmapProperty}
@@ -447,16 +500,46 @@ begin
   BuildList(SelectedIcon.Index);
 end;
 
+procedure TIconFontsImageListEditor.SetImageFontColor2(Color: TColor);
+begin
+  SelectedIcon.FontColor2 := Color;
+  UpdateGUI;
+end;
+
+procedure TIconFontsImageListEditor.SetImageFontIcon2Dec(IconDec: Integer);
+begin
+  SelectedIcon.FontIcon2Dec := IconDec;
+  UpdateGUI;
+end;
+
+procedure TIconFontsImageListEditor.SetImageFontIcon2Hex(IconHex: String);
+begin
+  SelectedIcon.FontIcon2Hex := IconHex;
+  UpdateGUI;
+end;
+
 procedure TIconFontsImageListEditor.FontColorChange(Sender: TObject);
 begin
   if FUpdating then Exit;
   SetImageFontColor(FontColor.Selected);
 end;
 
+procedure TIconFontsImageListEditor.FontColor2Change(Sender: TObject);
+begin
+  if FUpdating then Exit;
+  SetImageFontColor2(FontColor2.Selected);
+end;
+
 procedure TIconFontsImageListEditor.FontIconDecChange(Sender: TObject);
 begin
   if FUpdating then Exit;
   SetImageFontIconDec(FontIconDec.Value);
+end;
+
+procedure TIconFontsImageListEditor.FontIcon2DecChange(Sender: TObject);
+begin
+  if FUpdating then Exit;
+  SetImageFontIcon2Dec(FontIcon2Dec.Value);
 end;
 
 procedure TIconFontsImageListEditor.FontIconHexExit(Sender: TObject);
@@ -470,6 +553,16 @@ begin
     if Sender = FontIconHex then
       SetImageFontIconHex(FontIconHex.Text);
   end;
+end;
+
+procedure TIconFontsImageListEditor.FontIcon2HexExit(Sender: TObject);
+var
+  LText: string;
+begin
+  if FUpdating then Exit;
+  LText := FontIcon2Hex.Text;
+  if (Length(LText) = 4) or (Length(LText) = 5) or (Length(LText) = 6) or (Length(LText) = 0) then
+    SetImageFontIcon2Hex(LText);
 end;
 
 procedure TIconFontsImageListEditor.FontNameChange(Sender: TObject);
@@ -530,12 +623,18 @@ var
   LIsItemSelected: Boolean;
   LItemFontName: TFontName;
   LIconFontItem: TIconFontItem;
+  LDuotoneEnabled: Boolean;
 begin
   FUpdating := True;
   try
     UpdateCategories;
     LIconFontItem := SelectedIcon;
     LIsItemSelected := LIconFontItem <> nil;
+    {$IFDEF GDI+}
+    LDuotoneEnabled := LIsItemSelected and FEditingList.Duotone;
+    {$ELSE}
+    LDuotoneEnabled := False;
+    {$ENDIF}
     ClearAllButton.Enabled := FEditingList.Count > 0;
     ExportButton.Enabled := FEditingList.Count > 0;
     BuildButton.Enabled := CharsEdit.Text <> '';
@@ -550,6 +649,10 @@ begin
     FontIconHex.Enabled := LIsItemSelected;
     NameEdit.Enabled := LIsItemSelected;
     CategoryEdit.Enabled := LIsItemSelected;
+    FontColor2.Enabled := LDuotoneEnabled;
+    FontIcon2Dec.Enabled := LDuotoneEnabled;
+    FontIcon2Hex.Enabled := LDuotoneEnabled;
+    Pick2ndGlyphButton.Enabled := LDuotoneEnabled;
     ShowCharMapButton.Enabled := (FEditingList.FontName <> '');
     ImageListGroup.Caption := Format(FTotIconsLabel, [FEditingList.Count]);
     if LIsItemSelected then
@@ -575,6 +678,9 @@ begin
       CategoryEdit.Text := LIconFontItem.Category;
       FontIconDec.Value := LIconFontItem.FontIconDec;
       FontIconHex.Text := LIconFontItem.FontIconHex;
+      FontColor2.Selected := LIconFontItem.FontColor2;
+      FontIcon2Dec.Value := LIconFontItem.FontIcon2Dec;
+      FontIcon2Hex.Text := LIconFontItem.FontIcon2Hex;
       IconPanel.Invalidate;
 
       //Draw Icon
@@ -591,6 +697,9 @@ begin
       CategoryEdit.Text := '';
       FontIconDec.Value := 0;
       FontIconHex.Text := '';
+      FontColor2.Selected := clDefault;
+      FontIcon2Dec.Value := 0;
+      FontIcon2Hex.Text := '';
     end;
   finally
     FUpdating := False;
@@ -616,6 +725,37 @@ begin
   IconImage.Zoom := ZoomSpinEdit.Value;
   FChanged := True;
   UpdateGUI;
+end;
+
+procedure TIconFontsImageListEditor.DuotoneCheckBoxClick(Sender: TObject);
+begin
+  {$IFDEF GDI+}
+  FEditingList.Duotone := DuotoneCheckBox.Checked;
+  FChanged := True;
+  UpdateGUI;
+  {$ENDIF}
+end;
+
+procedure TIconFontsImageListEditor.DuotoneOffsetEditExit(Sender: TObject);
+begin
+  {$IFDEF GDI+}
+  if FUpdating then Exit;
+  if Length(DuotoneOffsetEdit.Text) > 0 then
+  begin
+    FEditingList.DuotoneOffset := StrToInt('$' + DuotoneOffsetEdit.Text);
+    FChanged := True;
+    UpdateGUI;
+  end;
+  {$ENDIF}
+end;
+
+procedure TIconFontsImageListEditor.DuotoneOpacitySpinEditChange(Sender: TObject);
+begin
+  {$IFDEF GDI+}
+  FEditingList.DuotoneOpacity := DuotoneOpacitySpinEdit.Value;
+  FChanged := True;
+  UpdateGUI;
+  {$ENDIF}
 end;
 
 procedure TIconFontsImageListEditor.ImageViewDragDrop(Sender, Source: TObject; X,
@@ -821,6 +961,15 @@ begin
   {$endif}
   ZoomSpinEdit.Value := FEditingList.Zoom;
   IconImage.Zoom := FEditingList.Zoom;
+  {$IFDEF GDI+}
+  DuotoneCheckBox.Checked := FEditingList.Duotone;
+  DuotoneOffsetEdit.Text := IntToHex(FEditingList.DuotoneOffset, 1);
+  DuotoneOpacitySpinEdit.Value := FEditingList.DuotoneOpacity;
+  {$ELSE}
+  DuotoneCheckBox.Enabled := False;
+  DuotoneOffsetEdit.Enabled := False;
+  DuotoneOpacitySpinEdit.Enabled := False;
+  {$ENDIF}
   BuildList(0);
   UpdateCharsToBuild;
 end;
@@ -966,6 +1115,7 @@ begin
   InitColorBox(DefaultMaskColorColorBox, clNone);
   InitColorBox(FontColor, clDefault);
   InitColorBox(MaskColor, clNone);
+  InitColorBox(FontColor2, clDefault);
   Caption := Format(Caption, [IconFontsImageListVersion]);
   FUpdating := True;
   FEditingList := TIconFontsImageList.Create(nil);

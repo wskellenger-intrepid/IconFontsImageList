@@ -78,7 +78,10 @@ type
       const AEnabled: Boolean = True;
       const ADisabledFactor: Byte = DEFAULT_DISABLE_FACTOR;
       const AOpacity: Byte = DEFAULT_OPACITY;
-      const AZoom: Integer = ZOOM_DEFAULT): TBitmap;
+      const AZoom: Integer = ZOOM_DEFAULT;
+      const ASecondaryFontIconDec: Integer = 0;
+      const ASecondaryFontColor: TColor = clNone;
+      const ASecondaryOpacity: Byte = DEFAULT_OPACITY): TBitmap;
     procedure Assign(Source: TIconFont);
     {$IFDEF GDI+}
     procedure PaintToGDI(const AGraphics: TGPGraphics;
@@ -106,6 +109,8 @@ type
     FFontColor: TColor;
     FMaskColor: TColor;
     FIconName: string;
+    FFontIcon2Dec: Integer;
+    FFontColor2: TColor;
     procedure SetFontColor(const AValue: TColor);
     procedure SetFontName(const AValue: TFontName);
     procedure SetMaskColor(const AValue: TColor);
@@ -114,6 +119,16 @@ type
     procedure SetFontIconDec(const AValue: Integer);
     function GetFontIconDec: Integer;
     function GetFontIconHex: string;
+    procedure SetFontColor2(const AValue: TColor);
+    procedure SetFontIcon2Hex(const AValue: string);
+    procedure SetFontIcon2Dec(const AValue: Integer);
+    function GetFontIcon2Dec: Integer;
+    function GetFontIcon2Hex: string;
+    function StoreFontColor2: Boolean;
+    procedure ResolveSecondaryIcon(const ALFontColor: TColor; const AOpacity: Byte;
+      const ADuotone: Boolean; const ADuotoneOffset: Integer; const ADuotoneOpacity: Byte;
+      out ASecondaryFontIconDec: Integer; out ASecondaryFontColor: TColor;
+      out ASecondaryOpacity: Byte);
     procedure Changed;
     function GetCharacter: WideString;
     function GetCategory: string;
@@ -134,13 +149,19 @@ type
     function GetBitmap(const AWidth, AHeight: Integer;
       const AEnabled: Boolean; AOpacity: Byte = DEFAULT_OPACITY;
       const ADisabledFactor: Byte = DEFAULT_DISABLE_FACTOR;
-      const AZoom: Integer = ZOOM_DEFAULT): TBitmap;
+      const AZoom: Integer = ZOOM_DEFAULT;
+      const ADuotone: Boolean = False;
+      const ADuotoneOffset: Integer = $100000;
+      const ADuotoneOpacity: Byte = 102): TBitmap;
     {$IFDEF GDI+}
     procedure PaintTo(const ACanvas: TCanvas;
       const X, Y, AWidth, AHeight: Integer;
       const AEnabled: Boolean = True; const ADisabledFactor: Byte = DEFAULT_DISABLE_FACTOR;
       const AOpacity: Byte = DEFAULT_OPACITY;
-      const AZoom: Integer = ZOOM_DEFAULT);
+      const AZoom: Integer = ZOOM_DEFAULT;
+      const ADuotone: Boolean = False;
+      const ADuotoneOffset: Integer = $100000;
+      const ADuotoneOpacity: Byte = 102);
     {$ELSE}
     procedure PaintTo(const ACanvas: TCanvas;
       const X, Y, AWidth, AHeight: Integer;
@@ -166,6 +187,12 @@ type
     property FontColor: TColor read FFontColor write SetFontColor stored StoreFontColor;
     property MaskColor: TColor read FMaskColor write SetMaskColor stored StoreMaskColor;
     property IconName: string read FIconName write SetIconName;
+    //Duotone secondary layer: FontIcon2Dec defaults to FontIconDec+DuotoneOffset
+    //(owner's Duotone/DuotoneOffset) when left at 0; FontColor2 defaults to the
+    //resolved primary FontColor (drawn at DuotoneOpacity) when left at clDefault.
+    property FontIcon2Dec: Integer read GetFontIcon2Dec write SetFontIcon2Dec stored true default 0;
+    property FontIcon2Hex: string read GetFontIcon2Hex write SetFontIcon2Hex stored false;
+    property FontColor2: TColor read FFontColor2 write SetFontColor2 stored StoreFontColor2 default clDefault;
   end;
 
   TIconFontItemChangedProc = procedure (Sender: TIconFontItem) of object;
@@ -297,6 +324,8 @@ begin
     FFontColor := TIconFontItem(Source).FFontColor;
     FMaskColor := TIconFontItem(Source).FMaskColor;
     FIconName := TIconFontItem(Source).FIconName;
+    FFontIcon2Dec := TIconFontItem(Source).FFontIcon2Dec;
+    FFontColor2 := TIconFontItem(Source).FFontColor2;
   end
   else
     inherited Assign(Source);
@@ -309,6 +338,8 @@ begin
   FFontIconDec := 0;
   FFontColor := clDefault;
   FMaskColor := clNone;
+  FFontIcon2Dec := 0;
+  FFontColor2 := clDefault;
 end;
 
 destructor TIconFontItem.Destroy;
@@ -338,13 +369,57 @@ begin
     (FMaskColor <> clNone);
 end;
 
+function TIconFontItem.StoreFontColor2: Boolean;
+begin
+  Result := FFontColor2 <> clDefault;
+end;
+
+procedure TIconFontItem.ResolveSecondaryIcon(const ALFontColor: TColor; const AOpacity: Byte;
+  const ADuotone: Boolean; const ADuotoneOffset: Integer; const ADuotoneOpacity: Byte;
+  out ASecondaryFontIconDec: Integer; out ASecondaryFontColor: TColor;
+  out ASecondaryOpacity: Byte);
+begin
+  if FFontIcon2Dec <> 0 then
+    ASecondaryFontIconDec := FFontIcon2Dec
+  else if ADuotone and (FFontIconDec <> 0) then
+    ASecondaryFontIconDec := FFontIconDec + ADuotoneOffset
+  else
+    ASecondaryFontIconDec := 0;
+
+  if ASecondaryFontIconDec = 0 then
+  begin
+    ASecondaryFontColor := clNone;
+    ASecondaryOpacity := AOpacity;
+    Exit;
+  end;
+
+  if FFontColor2 <> clDefault then
+  begin
+    //Explicit override: a genuinely distinct color, drawn at normal opacity
+    ASecondaryFontColor := FFontColor2;
+    ASecondaryOpacity := AOpacity;
+  end
+  else
+  begin
+    //Default duotone look: same color as the primary layer, dimmed
+    ASecondaryFontColor := ALFontColor;
+    ASecondaryOpacity := ADuotoneOpacity;
+  end;
+end;
+
 function TIconFontItem.GetBitmap(const AWidth, AHeight: Integer;
   const AEnabled: Boolean; AOpacity: Byte = DEFAULT_OPACITY;
   const ADisabledFactor: Byte = DEFAULT_DISABLE_FACTOR;
-  const AZoom: Integer = ZOOM_DEFAULT): TBitmap;
+  const AZoom: Integer = ZOOM_DEFAULT;
+  const ADuotone: Boolean = False;
+  const ADuotoneOffset: Integer = $100000;
+  const ADuotoneOpacity: Byte = 102): TBitmap;
 var
   LFontColor, LMaskColor: TColor;
   LFontName: TFontName;
+  LSecondaryFontIconDec: Integer;
+  LSecondaryFontColor: TColor;
+  LSecondaryOpacity: Byte;
 begin
   //Default values from ImageList if not supplied from Item
   IconFontItems.UpdateOwnerAttributes;
@@ -365,9 +440,18 @@ begin
   if Assigned(IconFontItems.FOnCheckFont) then
     IconFontItems.FOnCheckFont(LFontName);
 
+  {$IFDEF GDI+}
+  ResolveSecondaryIcon(LFontColor, AOpacity, ADuotone, ADuotoneOffset, ADuotoneOpacity,
+    LSecondaryFontIconDec, LSecondaryFontColor, LSecondaryOpacity);
+  {$ELSE}
+  LSecondaryFontIconDec := 0;
+  LSecondaryFontColor := clNone;
+  LSecondaryOpacity := AOpacity;
+  {$ENDIF}
+
   Result := FIconFont.GetBitmap(AWidth, AHeight, LFontName,
     FFontIconDec, LFontColor, LMaskColor, AEnabled, ADisabledFactor,
-    AOpacity, AZoom);
+    AOpacity, AZoom, LSecondaryFontIconDec, LSecondaryFontColor, LSecondaryOpacity);
 end;
 
 function TIconFontItem.GetName: string;
@@ -415,6 +499,21 @@ begin
     Result := '';
 end;
 
+function TIconFontItem.GetFontIcon2Dec: Integer;
+begin
+  Result := FFontIcon2Dec;
+end;
+
+function TIconFontItem.GetFontIcon2Hex: string;
+begin
+  //Secondary (duotone) codepoints commonly land beyond $FFFF (e.g. primary+$100000),
+  //so this needs up to 6 hex digits, unlike the primary FontIconHex (4-5 digits).
+  if FFontIcon2Dec <> 0 then
+    Result := RightStr('000000'+IntToHex(FFontIcon2Dec, 1),6)
+  else
+    Result := '';
+end;
+
 function TIconFontItem.GetIconFont: TIconFont;
 begin
   Result := FIconFont;
@@ -430,7 +529,10 @@ procedure TIconFontItem.PaintTo(const ACanvas: TCanvas;
   const X, Y, AWidth, AHeight: Integer;
   const AEnabled: Boolean = True; const ADisabledFactor: Byte = DEFAULT_DISABLE_FACTOR;
   const AOpacity: Byte = DEFAULT_OPACITY;
-  const AZoom: Integer = ZOOM_DEFAULT);
+  const AZoom: Integer = ZOOM_DEFAULT;
+  const ADuotone: Boolean = False;
+  const ADuotoneOffset: Integer = $100000;
+  const ADuotoneOpacity: Byte = 102);
 {$ELSE}
 procedure TIconFontItem.PaintTo(const ACanvas: TCanvas;
   const X, Y, AWidth, AHeight: Integer;
@@ -443,6 +545,9 @@ var
   LFontName: TFontName;
 {$IFDEF GDI+}
   LGPGraphics: TGPGraphics;
+  LSecondaryFontIconDec: Integer;
+  LSecondaryFontColor: TColor;
+  LSecondaryOpacity: Byte;
 {$ENDIF}
 begin
   //Default values from ImageList if not supplied from Item
@@ -470,6 +575,12 @@ begin
     FIconFont.PaintToGDI(LGPGraphics, X, Y, AWidth, AHeight,
       LFontName, FFontIconDec, LFontColor,
       AEnabled, ADisabledFactor, AOpacity, AZoom);
+    ResolveSecondaryIcon(LFontColor, AOpacity, ADuotone, ADuotoneOffset, ADuotoneOpacity,
+      LSecondaryFontIconDec, LSecondaryFontColor, LSecondaryOpacity);
+    if LSecondaryFontIconDec <> 0 then
+      FIconFont.PaintToGDI(LGPGraphics, X, Y, AWidth, AHeight,
+        LFontName, LSecondaryFontIconDec, LSecondaryFontColor,
+        AEnabled, ADisabledFactor, LSecondaryOpacity, AZoom);
   finally
     LGPGraphics.Free;
   end;
@@ -484,6 +595,15 @@ begin
   if AValue <> FFontColor then
   begin
     FFontColor := AValue;
+    Changed;
+  end;
+end;
+
+procedure TIconFontItem.SetFontColor2(const AValue: TColor);
+begin
+  if AValue <> FFontColor2 then
+  begin
+    FFontColor2 := AValue;
     Changed;
   end;
 end;
@@ -549,6 +669,34 @@ begin
       FontIconDec := StrToInt('$' + AValue)
     else if (Length(AValue) = 0) then
       FontIconDec := 0
+    else
+      raise Exception.CreateFmt(ERR_ICONFONTS_VALUE_NOT_ACCEPTED,[AValue]);
+  except
+    On E: EConvertError do
+      raise Exception.CreateFmt(ERR_ICONFONTS_VALUE_NOT_ACCEPTED,[AValue])
+    else
+      raise;
+  end;
+end;
+
+procedure TIconFontItem.SetFontIcon2Dec(const AValue: Integer);
+begin
+  if AValue <> FFontIcon2Dec then
+  begin
+    if (AValue <> 0) and not IsFontIconValidValue(AValue) then
+      raise Exception.CreateFmt(ERR_ICONFONTS_VALUE_NOT_ACCEPTED,[IntToHex(AValue, 1)]);
+    FFontIcon2Dec := AValue;
+    Changed;
+  end;
+end;
+
+procedure TIconFontItem.SetFontIcon2Hex(const AValue: string);
+begin
+  try
+    if (Length(AValue) = 4) or (Length(AValue) = 5) or (Length(AValue) = 6) then
+      FontIcon2Dec := StrToInt('$' + AValue)
+    else if (Length(AValue) = 0) then
+      FontIcon2Dec := 0
     else
       raise Exception.CreateFmt(ERR_ICONFONTS_VALUE_NOT_ACCEPTED,[AValue]);
   except
@@ -909,7 +1057,10 @@ function TIconFont.GetBitmap(const AWidth, AHeight: Integer;
   const AEnabled: Boolean = True;
   const ADisabledFactor: Byte = DEFAULT_DISABLE_FACTOR;
   const AOpacity: Byte = DEFAULT_OPACITY;
-  const AZoom: Integer = ZOOM_DEFAULT): TBitmap;
+  const AZoom: Integer = ZOOM_DEFAULT;
+  const ASecondaryFontIconDec: Integer = 0;
+  const ASecondaryFontColor: TColor = clNone;
+  const ASecondaryOpacity: Byte = DEFAULT_OPACITY): TBitmap;
 {$IFDEF GDI+}
 var
   LGraphics: TGPGraphics;
@@ -938,6 +1089,10 @@ begin
     LGraphics.SetSmoothingMode(SmoothingModeAntiAlias);
     PaintToGDI(LGraphics, 0, 0, AWidth, AHeight, AFontName,
       AFontIconDec, AFontColor, AEnabled, ADisabledFactor, AOpacity, AZoom);
+    if ASecondaryFontIconDec <> 0 then
+      PaintToGDI(LGraphics, 0, 0, AWidth, AHeight, AFontName,
+        ASecondaryFontIconDec, ASecondaryFontColor, AEnabled, ADisabledFactor,
+        ASecondaryOpacity, AZoom);
   finally
     LGraphics.Free;
   end;

@@ -55,11 +55,21 @@ type
     FOnFontMissing: TIconFontMissing;
     FFontNamesChecked: TStrings;
     FZoom: Integer;
+    {$IFDEF GDI+}
+    FDuotone: Boolean;
+    FDuotoneOffset: Integer;
+    FDuotoneOpacity: Byte;
+    {$ENDIF}
     procedure SetFontColor(const AValue: TColor);
     procedure SetFontName(const AValue: TFontName);
     procedure SetMaskColor(const AValue: TColor);
     procedure SetIconFontItems(Value: TIconFontItems);
     procedure SetZoom(const Value: Integer);
+    {$IFDEF GDI+}
+    procedure SetDuotone(const Value: Boolean);
+    procedure SetDuotoneOffset(const Value: Integer);
+    procedure SetDuotoneOpacity(const Value: Byte);
+    {$ENDIF}
   protected
     //Events for notification from item to imagelist
     procedure CheckFontName(const AFontName: TFontName);
@@ -121,6 +131,12 @@ type
     property MaskColor: TColor read FMaskColor write SetMaskColor default clNone;
     property OnFontMissing: TIconFontMissing read FOnFontMissing write FOnFontMissing;
     property Zoom: Integer read FZoom write SetZoom default ZOOM_DEFAULT;
+    {$IFDEF GDI+}
+    //See TIconFontsImageListBase.Duotone/DuotoneOffset/DuotoneOpacity for details.
+    property Duotone: Boolean read FDuotone write SetDuotone default False;
+    property DuotoneOffset: Integer read FDuotoneOffset write SetDuotoneOffset default $100000;
+    property DuotoneOpacity: Byte read FDuotoneOpacity write SetDuotoneOpacity default 102;
+    {$ENDIF}
   end;
 
 implementation
@@ -168,6 +184,11 @@ begin
   FFontColor := clDefault;
   FMaskColor := clNone;
   FZoom := ZOOM_DEFAULT;
+  {$IFDEF GDI+}
+  FDuotone := False;
+  FDuotoneOffset := $100000;
+  FDuotoneOpacity := 102;
+  {$ENDIF}
 end;
 
 procedure TIconFontsImageCollection.Delete(const AIndex: Integer);
@@ -218,6 +239,35 @@ begin
     OnItemChanged(nil);
   end;
 end;
+
+{$IFDEF GDI+}
+procedure TIconFontsImageCollection.SetDuotone(const Value: Boolean);
+begin
+  if FDuotone <> Value then
+  begin
+    FDuotone := Value;
+    OnItemChanged(nil);
+  end;
+end;
+
+procedure TIconFontsImageCollection.SetDuotoneOffset(const Value: Integer);
+begin
+  if FDuotoneOffset <> Value then
+  begin
+    FDuotoneOffset := Value;
+    OnItemChanged(nil);
+  end;
+end;
+
+procedure TIconFontsImageCollection.SetDuotoneOpacity(const Value: Byte);
+begin
+  if FDuotoneOpacity <> Value then
+  begin
+    FDuotoneOpacity := Value;
+    OnItemChanged(nil);
+  end;
+end;
+{$ENDIF}
 
 procedure TIconFontsImageCollection.UpdateIconsAttributes(
   const AFontColor, AMaskColor: TColor; const AReplaceFontColor: Boolean;
@@ -282,7 +332,8 @@ begin
     Exit;
   LIconFontItem := FIconFontItems.Items[AIndex];
   Result := LIconFontItem.GetBitmap(AWidth, AHeight, True,
-    DEFAULT_OPACITY, DEFAULT_DISABLE_FACTOR, Zoom);
+    DEFAULT_OPACITY, DEFAULT_DISABLE_FACTOR, Zoom,
+    FDuotone, FDuotoneOffset, FDuotoneOpacity);
 end;
 
 procedure TIconFontsImageCollection.Draw(ACanvas: TCanvas; ARect: TRect; AIndex: Integer;
@@ -299,7 +350,7 @@ begin
   {$IFDEF GDI+}
   LIconFontItem.PaintTo(ACanvas, ARect.Left, ARect.Top, ARect.Width,
     ARect.Height, True, DEFAULT_DISABLE_FACTOR, DEFAULT_OPACITY,
-    Zoom);
+    Zoom, FDuotone, FDuotoneOffset, FDuotoneOpacity);
   {$ELSE}
   LIconFontItem.PaintTo(ACanvas, ARect.Left, ARect.Top, ARect.Width,
     ARect.Height, LMaskColor, True, DEFAULT_DISABLE_FACTOR,

@@ -92,6 +92,9 @@ type
     procedure SetZoom(const AValue: Integer);
     {$IFDEF GDI+}
     function OwnerOpacity: Byte;
+    function OwnerDuotone: Boolean;
+    function OwnerDuotoneOffset: Integer;
+    function OwnerDuotoneOpacity: Byte;
     {$ENDIF}
   protected
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
@@ -246,6 +249,9 @@ var
   LOpacity: Byte;
   LBounds: TGPRectF;
   LGraphics: TGPGraphics;
+  LSecondaryFontIconDec: Integer;
+  LSecondaryFontColor: TColor;
+  LSecondaryOpacity: Byte;
   {$ELSE}
   LMaskColor: TColor;
   LBounds: TRect;
@@ -301,6 +307,10 @@ var
   end;
 
 begin
+  {$IFDEF GDI+}
+  LSecondaryFontColor := clNone;
+  LSecondaryOpacity := 0;
+  {$ENDIF}
   if not UsingIconFont then
   begin
     LItem := IconFontItems.Items[FImageIndex];
@@ -328,6 +338,28 @@ begin
     {$ENDIF}
     LFontIconDec := LItem.FontIconDec;
     CalcWidth(FImageList.Width, FImageList.Height);
+    {$IFDEF GDI+}
+    //Duotone secondary layer, mirroring TIconFontItem.ResolveSecondaryIcon
+    if LItem.FontIcon2Dec <> 0 then
+      LSecondaryFontIconDec := LItem.FontIcon2Dec
+    else if OwnerDuotone and (LFontIconDec <> 0) then
+      LSecondaryFontIconDec := LFontIconDec + OwnerDuotoneOffset
+    else
+      LSecondaryFontIconDec := 0;
+    if LSecondaryFontIconDec <> 0 then
+    begin
+      if LItem.FontColor2 <> clDefault then
+      begin
+        LSecondaryFontColor := LItem.FontColor2;
+        LSecondaryOpacity := LOpacity;
+      end
+      else
+      begin
+        LSecondaryFontColor := LFontColor;
+        LSecondaryOpacity := OwnerDuotoneOpacity;
+      end;
+    end;
+    {$ENDIF}
   end
   else
   begin
@@ -338,6 +370,7 @@ begin
     LDisabledFactor := FDisabledFactor;
     {$IFDEF GDI+}
     LOpacity := FOpacity;
+    LSecondaryFontIconDec := 0; //Standalone (not bound to an image list item): no duotone
     {$ELSE}
     LMaskColor := FMaskColor;
     {$ENDIF}
@@ -355,6 +388,11 @@ begin
       LIconFont.PaintToGDI(LGraphics,
         LBounds.X, LBounds.Y, LBounds.Width, LBounds.Height, LFontName,
           LFontIconDec, LFontColor, Enabled, LDisabledFactor, LOpacity, FZoom);
+      if LSecondaryFontIconDec <> 0 then
+        LIconFont.PaintToGDI(LGraphics,
+          LBounds.X, LBounds.Y, LBounds.Width, LBounds.Height, LFontName,
+            LSecondaryFontIconDec, LSecondaryFontColor, Enabled, LDisabledFactor,
+            LSecondaryOpacity, FZoom);
     finally
       LGraphics.Free;
     end;
@@ -443,6 +481,42 @@ begin
   Result := FOpacity;
   if FImageList is TIconFontsImageListBase then
     Result := TIconFontsImageListBase(FImageList).Opacity;
+end;
+
+function TIconFontImage.OwnerDuotone: Boolean;
+begin
+  Result := False;
+  if FImageList is TIconFontsImageListBase then
+    Result := TIconFontsImageListBase(FImageList).Duotone
+  {$IFDEF D10_3+}
+  else if (FImageList is TVirtualImageList) and
+    (TVirtualImageList(FImageList).ImageCollection is TIconFontsImageCollection) then
+    Result := TIconFontsImageCollection(TVirtualImageList(FImageList).ImageCollection).Duotone;
+  {$ENDIF}
+end;
+
+function TIconFontImage.OwnerDuotoneOffset: Integer;
+begin
+  Result := $100000;
+  if FImageList is TIconFontsImageListBase then
+    Result := TIconFontsImageListBase(FImageList).DuotoneOffset
+  {$IFDEF D10_3+}
+  else if (FImageList is TVirtualImageList) and
+    (TVirtualImageList(FImageList).ImageCollection is TIconFontsImageCollection) then
+    Result := TIconFontsImageCollection(TVirtualImageList(FImageList).ImageCollection).DuotoneOffset;
+  {$ENDIF}
+end;
+
+function TIconFontImage.OwnerDuotoneOpacity: Byte;
+begin
+  Result := 102;
+  if FImageList is TIconFontsImageListBase then
+    Result := TIconFontsImageListBase(FImageList).DuotoneOpacity
+  {$IFDEF D10_3+}
+  else if (FImageList is TVirtualImageList) and
+    (TVirtualImageList(FImageList).ImageCollection is TIconFontsImageCollection) then
+    Result := TIconFontsImageCollection(TVirtualImageList(FImageList).ImageCollection).DuotoneOpacity;
+  {$ENDIF}
 end;
 {$ENDIF}
 

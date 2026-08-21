@@ -160,13 +160,13 @@ object IconFontsImageListEditor: TIconFontsImageListEditor
         Left = 0
         Top = 141
         Width = 185
-        Height = 191
+        Height = 259
         Align = alBottom
         Caption = 'Global properties'
         TabOrder = 1
         DesignSize = (
           185
-          191)
+          259)
         object DefaultFontNameLabel: TLabel
           Left = 8
           Top = 23
@@ -257,6 +257,54 @@ object IconFontsImageListEditor: TIconFontsImageListEditor
           TabOrder = 4
           Value = 100
           OnChange = ZoomSpinEditChange
+        end
+        object DuotoneCheckBox: TCheckBox
+          Left = 7
+          Top = 191
+          Width = 170
+          Height = 17
+          Caption = 'Duotone (2nd layer)'
+          TabOrder = 5
+          OnClick = DuotoneCheckBoxClick
+        end
+        object DuotoneOffsetLabel: TLabel
+          Left = 8
+          Top = 214
+          Width = 89
+          Height = 13
+          Caption = 'Offset (hex)'
+          Transparent = True
+        end
+        object DuotoneOpacityLabel: TLabel
+          Left = 97
+          Top = 214
+          Width = 80
+          Height = 13
+          Alignment = taRightJustify
+          Caption = 'Opacity (0-255)'
+          Transparent = True
+        end
+        object DuotoneOffsetEdit: TEdit
+          Left = 7
+          Top = 229
+          Width = 80
+          Height = 21
+          CharCase = ecUpperCase
+          MaxLength = 6
+          TabOrder = 6
+          Text = '100000'
+          OnExit = DuotoneOffsetEditExit
+        end
+        object DuotoneOpacitySpinEdit: TSpinEdit
+          Left = 97
+          Top = 229
+          Width = 80
+          Height = 22
+          MaxValue = 255
+          MinValue = 0
+          TabOrder = 7
+          Value = 102
+          OnChange = DuotoneOpacitySpinEditChange
         end
       end
     end
@@ -413,7 +461,7 @@ object IconFontsImageListEditor: TIconFontsImageListEditor
     Left = 0
     Top = 401
     Width = 770
-    Height = 163
+    Height = 199
     Align = alBottom
     Caption = 'Properties of Selected Icon n.%d'
     TabOrder = 3
@@ -578,6 +626,72 @@ object IconFontsImageListEditor: TIconFontsImageListEditor
         Height = 21
         TabOrder = 6
         OnExit = CategoryEditExit
+      end
+      object FontColor2Label: TLabel
+        Left = 25
+        Top = 134
+        Width = 96
+        Height = 13
+        Caption = 'FontColor2 (Duotone)'
+        Transparent = True
+      end
+      object FontIcon2HexLabel: TLabel
+        Left = 210
+        Top = 134
+        Width = 76
+        Height = 13
+        Caption = 'FontIcon2Hex'
+        Transparent = True
+      end
+      object FontIcon2DecLabel: TLabel
+        Left = 304
+        Top = 134
+        Width = 76
+        Height = 13
+        Caption = 'FontIcon2Dec'
+        Transparent = True
+      end
+      object FontColor2: TColorBox
+        Left = 25
+        Top = 151
+        Width = 180
+        Height = 22
+        DefaultColorColor = clNone
+        NoneColorColor = clNone
+        Selected = clDefault
+        Style = [cbStandardColors, cbExtendedColors, cbSystemColors, cbIncludeDefault]
+        TabOrder = 7
+        OnChange = FontColor2Change
+      end
+      object FontIcon2Hex: TEdit
+        Left = 210
+        Top = 151
+        Width = 86
+        Height = 21
+        CharCase = ecUpperCase
+        MaxLength = 6
+        TabOrder = 8
+        OnExit = FontIcon2HexExit
+      end
+      object FontIcon2Dec: TSpinEdit
+        Left = 304
+        Top = 151
+        Width = 86
+        Height = 22
+        MaxValue = 0
+        MinValue = 0
+        TabOrder = 9
+        Value = 0
+        OnChange = FontIcon2DecChange
+      end
+      object Pick2ndGlyphButton: TButton
+        Left = 410
+        Top = 150
+        Width = 180
+        Height = 24
+        Caption = 'Pick 2nd Glyph...'
+        TabOrder = 10
+        OnClick = Pick2ndGlyphButtonClick
       end
     end
     object IconLeftMarginPanel: TPanel

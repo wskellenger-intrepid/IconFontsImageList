@@ -84,6 +84,9 @@ type
     FZoom: Integer;
     {$IFDEF GDI+}
     FOpacity: Byte;
+    FDuotone: Boolean;
+    FDuotoneOffset: Integer;
+    FDuotoneOpacity: Byte;
     {$ENDIF}
     {$IFDEF HiDPISupport}
     FScaled: Boolean;
@@ -110,6 +113,9 @@ type
 
     {$IFDEF GDI+}
     procedure SetOpacity(const Value: Byte);
+    procedure SetDuotone(const Value: Boolean);
+    procedure SetDuotoneOffset(const Value: Integer);
+    procedure SetDuotoneOpacity(const Value: Byte);
     {$ENDIF}
     procedure SetDisabledFactor(const Value: Byte);
     function CheckCollection: boolean;
@@ -205,6 +211,20 @@ type
     property MaskColor: TColor read FMaskColor write SetMaskColor default clNone;
     {$IFDEF GDI+}
     property Opacity: Byte read FOpacity write SetOpacity default 255;
+    //Duotone: draws a second glyph (FontIcon2Dec on each item) layered over the
+    //primary one, like FontAwesome Duotone icons. DuotoneOffset is added to an
+    //item's FontIconDec to get its default secondary codepoint when FontIcon2Dec
+    //isn't explicitly set ($100000 is the commonly-cited FA5/FA6 Duotone/Sharp-Duotone
+    //convention - verify against your specific font if using a different family).
+    //Note: FontAwesome 6/7 icons introduced after FA5 generally have NO secondary
+    //codepoint at all (their second layer is an OpenType ligature substitution that
+    //GDI+ text rendering cannot resolve) - for those icons neither DuotoneOffset nor
+    //a manually-entered FontIcon2Hex can produce a second layer; Duotone here only
+    //works for icons whose font actually ships an addressable secondary glyph.
+    //DuotoneOpacity is the secondary layer's alpha when FontColor2 isn't overridden.
+    property Duotone: Boolean read FDuotone write SetDuotone default False;
+    property DuotoneOffset: Integer read FDuotoneOffset write SetDuotoneOffset default $100000;
+    property DuotoneOpacity: Byte read FDuotoneOpacity write SetDuotoneOpacity default 102;
     {$ENDIF}
     property OnFontMissing: TIconFontMissing read FOnFontMissing write FOnFontMissing;
     property OnDrawIcon: TDrawIconEvent read FOnDrawIcon write FOnDrawIcon;
@@ -282,6 +302,33 @@ begin
     RecreateBitmaps;
   end;
 end;
+
+procedure TIconFontsImageListBase.SetDuotone(const Value: Boolean);
+begin
+  if FDuotone <> Value then
+  begin
+    FDuotone := Value;
+    RecreateBitmaps;
+  end;
+end;
+
+procedure TIconFontsImageListBase.SetDuotoneOffset(const Value: Integer);
+begin
+  if FDuotoneOffset <> Value then
+  begin
+    FDuotoneOffset := Value;
+    RecreateBitmaps;
+  end;
+end;
+
+procedure TIconFontsImageListBase.SetDuotoneOpacity(const Value: Byte);
+begin
+  if FDuotoneOpacity <> Value then
+  begin
+    FDuotoneOpacity := Value;
+    RecreateBitmaps;
+  end;
+end;
 {$ENDIF}
 
 procedure TIconFontsImageListBase.ClearIcons;
@@ -309,6 +356,9 @@ begin
   FZoom := ZOOM_DEFAULT;
   {$IFDEF GDI+}
   FOpacity := 255;
+  FDuotone := False;
+  FDuotoneOffset := $100000;
+  FDuotoneOpacity := 102;
   {$ENDIF}
   FFontNamesChecked := TStringList.Create;
   {$IFDEF HasStoreBitmapProperty}
@@ -548,7 +598,8 @@ begin
     LItem := IconFontItems[AIndex];
 
     {$IFDEF GDI+}
-    LItem.PaintTo(ACanvas, X, Y, AWidth, AHeight, AEnabled, ADisabledFactor, FOpacity, AZoom);
+    LItem.PaintTo(ACanvas, X, Y, AWidth, AHeight, AEnabled, ADisabledFactor, FOpacity, AZoom,
+      FDuotone, FDuotoneOffset, FDuotoneOpacity);
     {$ELSE}
     LItem.PaintTo(ACanvas, X, Y, AWidth, AHeight, LMaskColor, AEnabled, ADisabledFactor, AZoom);
     {$ENDIF}
@@ -641,6 +692,9 @@ begin
       {$IFDEF GDI+}
       FDisabledFactor := TIconFontsImageListBase(Source).FDisabledFactor;
       FOpacity := TIconFontsImageListBase(Source).FOpacity;
+      FDuotone := TIconFontsImageListBase(Source).FDuotone;
+      FDuotoneOffset := TIconFontsImageListBase(Source).FDuotoneOffset;
+      FDuotoneOpacity := TIconFontsImageListBase(Source).FDuotoneOpacity;
       {$ENDIF}
 
       {$IFDEF HasStoreBitmapProperty}
@@ -849,7 +903,8 @@ begin
           if Assigned(LItem) then
           begin
             LBitmap := LItem.GetBitmap(Width, Height, True,
-              DEFAULT_OPACITY, DEFAULT_DISABLE_FACTOR, Zoom);
+              DEFAULT_OPACITY, DEFAULT_DISABLE_FACTOR, Zoom,
+              FDuotone, FDuotoneOffset, FDuotoneOpacity);
             try
               ImageList_Add(Handle, LBitmap.Handle, 0);
               if Assigned(OnDrawIcon) then
