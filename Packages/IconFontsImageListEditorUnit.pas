@@ -642,6 +642,7 @@ var
   LItemFontName: TFontName;
   LIconFontItem: TIconFontItem;
   LDuotoneEnabled: Boolean;
+  LAutoFontIcon2Dec: Integer;
 begin
   FUpdating := True;
   try
@@ -697,8 +698,33 @@ begin
       FontIconDec.Value := LIconFontItem.FontIconDec;
       FontIconHex.Text := LIconFontItem.FontIconHex;
       FontColor2.Selected := LIconFontItem.FontColor2;
-      FontIcon2Dec.Value := LIconFontItem.FontIcon2Dec;
-      FontIcon2Hex.Text := LIconFontItem.FontIcon2Hex;
+      if LIconFontItem.FontIcon2Dec <> 0 then
+      begin
+        //Explicit per-icon override: show the real stored value.
+        FontIcon2Dec.Font.Color := clWindowText;
+        FontIcon2Dec.Value := LIconFontItem.FontIcon2Dec;
+        FontIcon2Hex.Text := LIconFontItem.FontIcon2Hex;
+        FontIcon2Hex.TextHint := '';
+      end
+      else
+      begin
+        //Not overridden: show what Duotone would actually draw (FontIconDec +
+        //DuotoneOffset) as a live preview of the default, without writing it
+        //into the item - leave Text/Value blank-equivalent so tabbing through
+        //these fields untouched can't silently turn into a stored override.
+        LAutoFontIcon2Dec := 0;
+        {$IFDEF GDI+}
+        if LDuotoneEnabled and (LIconFontItem.FontIconDec <> 0) then
+          LAutoFontIcon2Dec := LIconFontItem.FontIconDec + FEditingList.DuotoneOffset;
+        {$ENDIF}
+        FontIcon2Dec.Font.Color := clGrayText;
+        FontIcon2Dec.Value := LAutoFontIcon2Dec;
+        FontIcon2Hex.Text := '';
+        if LAutoFontIcon2Dec <> 0 then
+          FontIcon2Hex.TextHint := IntToHex(LAutoFontIcon2Dec, 6)
+        else
+          FontIcon2Hex.TextHint := '';
+      end;
       IconPanel.Invalidate;
 
       //Draw Icon
@@ -716,8 +742,10 @@ begin
       FontIconDec.Value := 0;
       FontIconHex.Text := '';
       FontColor2.Selected := clDefault;
+      FontIcon2Dec.Font.Color := clWindowText;
       FontIcon2Dec.Value := 0;
       FontIcon2Hex.Text := '';
+      FontIcon2Hex.TextHint := '';
     end;
   finally
     FUpdating := False;
