@@ -1,0 +1,10 @@
+*.exe
+*.dcu
+*.res
+*.dproj.local
+*.identcache
+__history/
+__recovery/
+Win32/
+Win64/
+Win64x/
