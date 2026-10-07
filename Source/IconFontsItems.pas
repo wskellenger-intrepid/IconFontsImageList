@@ -333,21 +333,26 @@ procedure IconFontsPaintBuffered(const ADC: HDC; const X, Y, AWidth, AHeight: In
 var
   LBitmap: TGPBitmap;
   LGraphics: TGPGraphics;
+  LMargin: Integer;
 begin
   if (AWidth <= 0) or (AHeight <= 0) then
     Exit;
-  LBitmap := TGPBitmap.Create(AWidth, AHeight, PixelFormat32bppPARGB);
+  //Glyphs wider than the box (code, function...) overflow it, as they did when drawn directly;
+  //the transparent margin keeps them from being clipped
+  LMargin := Max(AWidth, AHeight) div 2;
+  LBitmap := TGPBitmap.Create(AWidth + 2 * LMargin, AHeight + 2 * LMargin, PixelFormat32bppPARGB);
   try
     LGraphics := TGPGraphics.Create(LBitmap);
     try
       LGraphics.SetSmoothingMode(SmoothingModeAntiAlias);
+      LGraphics.TranslateTransform(LMargin, LMargin);
       APaint(LGraphics);
     finally
       LGraphics.Free;
     end;
     LGraphics := TGPGraphics.Create(ADC);
     try
-      LGraphics.DrawImage(LBitmap, X, Y, AWidth, AHeight);
+      LGraphics.DrawImage(LBitmap, X - LMargin, Y - LMargin, AWidth + 2 * LMargin, AHeight + 2 * LMargin);
     finally
       LGraphics.Free;
     end;
