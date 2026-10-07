@@ -20,6 +20,8 @@ type
     procedure GlyphNarrowerThanItsBoxIsCentered;
     [Test]
     procedure GlyphTallerThanItsBoxIsNotClipped;
+    [Test]
+    procedure DrawAppliesTheListZoom;
   end;
 
 implementation
@@ -97,6 +99,33 @@ begin
   finally
     LBitmap.Free;
   end;
+end;
+
+procedure TIconFontsLayoutTests.DrawAppliesTheListZoom;
+
+  function InkHeight(const AZoom: Integer): Integer;
+  var
+    LBitmap: TBitmap;
+    LInk: TRect;
+  begin
+    // Render draws through ImageList.Draw, as menus and buttons do
+    LBitmap := Render(TEST_FONT, NARROW, AZoom);
+    try
+      LInk := InkBounds(LBitmap);
+      Result := LInk.Bottom - LInk.Top + 1;
+    finally
+      LBitmap.Free;
+    end;
+  end;
+
+var
+  LFull, LHalf: Integer;
+begin
+  LFull := InkHeight(100);
+  LHalf := InkHeight(50);
+  Assert.IsTrue(LFull > 0, 'the glyph was not drawn');
+  Assert.IsTrue(Abs(LHalf - LFull / 2) <= 1,
+    Format('ink is %d px tall at Zoom 50 and %d px at Zoom 100', [LHalf, LFull]));
 end;
 
 initialization

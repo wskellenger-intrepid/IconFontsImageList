@@ -289,7 +289,7 @@ end;
 procedure TIconFontsImageListBase.DoDraw(Index: Integer; Canvas: TCanvas; X, Y: Integer;
   Style: Cardinal; Enabled: Boolean);
 begin
-  PaintTo(Canvas, Index, X, Y, Width, Height, Enabled, Zoom);
+  PaintTo(Canvas, Index, X, Y, Width, Height, Enabled, FDisabledFactor, Zoom);
 end;
 
 { TIconFontsImageListBase }
