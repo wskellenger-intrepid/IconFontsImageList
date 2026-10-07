@@ -3,14 +3,17 @@
 DUnitX console tests for drawing icons through `TIconFontsImageCollection` and
 `TIconFontsVirtualImageList` (VCL, GDI+).
 
-- `IconFontsRenderingTests`: fonts registered from memory with `IconFontsAddMemoryFont`, glyphs that
-  overflow their box, and anti-aliasing on a window. They use the Weather Icons font from
-  `Demo\Fonts`, which is normally not installed: that is what lets them tell a registered memory font
-  from an installed one.
-- `IconFontsDuotoneTests`: the duotone secondary layer (`Duotone`, `FontColor2`, `FontIcon2Dec`). They
-  use `Fonts\duotone-test.ttf`, whose glyphs are plain rectangles (a primary layer on the left half of
-  the box, its secondary on the right), so a test can find each layer by position. Rebuild it with
-  `python Fonts\make_duotone_test_font.py` (needs `pip install fonttools`).
+- `IconFontsRenderingTests`: fonts registered from memory with `IconFontsAddMemoryFont`, and
+  anti-aliasing on a window. They use the Weather Icons font from `Demo\Fonts`, which is normally not
+  installed: that is what lets them tell a registered memory font from an installed one.
+- `IconFontsLayoutTests`: where a glyph lands in its box. One wider than the box is scaled to fit
+  it, one narrower is centered, and one taller overflows rather than being clipped.
+- `IconFontsDuotoneTests`: the duotone secondary layer (`Duotone`, `FontColor2`, `FontIcon2Dec`).
+
+The layout and duotone tests use `Fonts\icon-test.ttf`, whose glyphs are plain rectangles (wide,
+narrow and tall ones, and a primary layer on the left half of the box with its secondary on the
+right), so a test can find the ink by position. Rebuild it with `python Fonts\make_test_font.py`
+(needs `pip install fonttools`).
 
 Open `IconFontsImageListTests.dpr` in RAD Studio and run it, or build from a RAD Studio
 command prompt (`rsvars.bat`):

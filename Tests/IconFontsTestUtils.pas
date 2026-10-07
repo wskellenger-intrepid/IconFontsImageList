@@ -5,6 +5,7 @@ interface
 uses
   System.SysUtils,
   System.Classes,
+  System.Types,
   Vcl.Graphics,
   IconFontsVirtualImageList;
 
@@ -30,11 +31,13 @@ function Grey(const ABitmap: TBitmap; const X, Y: Integer): Integer;
 
 function InkCount(const ABitmap: TBitmap): Integer;
 
+//The rectangle (inclusive) covered by ink; Right < Left when nothing was drawn
+function InkBounds(const ABitmap: TBitmap): TRect;
+
 implementation
 
 uses
   System.IOUtils,
-  System.Types,
   System.UITypes,
   IconFontsItems,
   IconFontsImageCollection;
@@ -100,6 +103,22 @@ begin
     for Y := 0 to ABitmap.Height - 1 do
       if Grey(ABitmap, X, Y) < 128 then
         Inc(Result);
+end;
+
+function InkBounds(const ABitmap: TBitmap): TRect;
+var
+  X, Y: Integer;
+begin
+  Result := Rect(MaxInt, MaxInt, -1, -1);
+  for X := 0 to ABitmap.Width - 1 do
+    for Y := 0 to ABitmap.Height - 1 do
+      if Grey(ABitmap, X, Y) < 128 then
+      begin
+        if X < Result.Left then Result.Left := X;
+        if X > Result.Right then Result.Right := X;
+        if Y < Result.Top then Result.Top := Y;
+        if Y > Result.Bottom then Result.Bottom := Y;
+      end;
 end;
 
 end.

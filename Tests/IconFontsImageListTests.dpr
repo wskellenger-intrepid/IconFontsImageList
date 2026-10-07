@@ -9,6 +9,7 @@ uses
   DUnitX.TestFramework,
   IconFontsTestUtils in 'IconFontsTestUtils.pas',
   IconFontsRenderingTests in 'IconFontsRenderingTests.pas',
+  IconFontsLayoutTests in 'IconFontsLayoutTests.pas',
   IconFontsDuotoneTests in 'IconFontsDuotoneTests.pas';
 
 var

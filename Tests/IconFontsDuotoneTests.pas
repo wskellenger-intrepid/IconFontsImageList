@@ -45,8 +45,8 @@ uses
   IconFontsTestUtils;
 
 const
-  // Fonts\duotone-test.ttf, built by Fonts\make_duotone_test_font.py: every glyph is a rectangle
-  TEST_FONT = 'IconFonts Duotone Test';
+  // Fonts\icon-test.ttf, built by Fonts\make_test_font.py: every glyph is a rectangle
+  TEST_FONT = 'IconFonts Test';
   LEFT_HALF = $E000;             // its secondary, U+10E000, is the right half
   LEFT_HALF_NO_SECONDARY = $E001;
   RIGHT_HALF = $E002;
@@ -62,7 +62,7 @@ var
   LLeft, LRight: TBitmap;
   X, Y: Integer;
 begin
-  FFontData := RegisterMemoryFont('Fonts\duotone-test.ttf');
+  FFontData := RegisterMemoryFont('Fonts\icon-test.ttf');
   // the secondary layer's area: solid in the right-half glyph and blank in the left-half glyph
   FSecondaryArea := TList<TPoint>.Create;
   LLeft := Render(TEST_FONT, LEFT_HALF);
