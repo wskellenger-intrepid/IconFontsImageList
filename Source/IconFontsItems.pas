@@ -261,6 +261,17 @@ procedure IconFontsAddMemoryFont(const AData: Pointer; const ASize: Integer);
 //True if AFontName is installed or was registered with IconFontsAddMemoryFont
 function IconFontsFontAvailable(const AFontName: TFontName): Boolean;
 
+{$IFDEF GDI+}
+type
+  TIconFontsPaintProc = reference to procedure(const AGraphics: TGPGraphics);
+
+//Paints through an off-screen 32-bit bitmap, then copies it to ADC at (X, Y). GDI+ drops text
+//anti-aliasing when it draws straight to a window DC in some sessions (Remote Desktop), but always
+//anti-aliases into a bitmap. APaint draws in bitmap coordinates: (0, 0) is the top left.
+procedure IconFontsPaintBuffered(const ADC: HDC; const X, Y, AWidth, AHeight: Integer;
+  const APaint: TIconFontsPaintProc);
+{$ENDIF}
+
 implementation
 
 uses
@@ -312,6 +323,36 @@ begin
     Result := TGPFontFamily.Create(AFontName, _PrivateFonts);
     if Result.GetLastStatus <> Ok then
       FreeAndNil(Result);
+  end;
+end;
+{$ENDIF}
+
+{$IFDEF GDI+}
+procedure IconFontsPaintBuffered(const ADC: HDC; const X, Y, AWidth, AHeight: Integer;
+  const APaint: TIconFontsPaintProc);
+var
+  LBitmap: TGPBitmap;
+  LGraphics: TGPGraphics;
+begin
+  if (AWidth <= 0) or (AHeight <= 0) then
+    Exit;
+  LBitmap := TGPBitmap.Create(AWidth, AHeight, PixelFormat32bppPARGB);
+  try
+    LGraphics := TGPGraphics.Create(LBitmap);
+    try
+      LGraphics.SetSmoothingMode(SmoothingModeAntiAlias);
+      APaint(LGraphics);
+    finally
+      LGraphics.Free;
+    end;
+    LGraphics := TGPGraphics.Create(ADC);
+    try
+      LGraphics.DrawImage(LBitmap, X, Y, AWidth, AHeight);
+    finally
+      LGraphics.Free;
+    end;
+  finally
+    LBitmap.Free;
   end;
 end;
 {$ENDIF}
@@ -597,7 +638,6 @@ var
   LFontColor: TColor;
   LFontName: TFontName;
 {$IFDEF GDI+}
-  LGPGraphics: TGPGraphics;
   LSecondaryFontIconDec: Integer;
   LSecondaryFontColor: TColor;
   LSecondaryOpacity: Byte;
@@ -622,21 +662,19 @@ begin
   LFontName := FontNameOfIcon;
 
   {$IFDEF GDI+}
-  LGPGraphics := TGPGraphics.Create(ACanvas.Handle);
-  try
-    LGPGraphics.SetSmoothingMode(SmoothingModeAntiAlias);
-    FIconFont.PaintToGDI(LGPGraphics, X, Y, AWidth, AHeight,
-      LFontName, FFontIconDec, LFontColor,
-      AEnabled, ADisabledFactor, AOpacity, AZoom);
-    ResolveSecondaryIcon(LFontColor, AOpacity, ADuotone, ADuotoneOffset, ADuotoneOpacity,
-      LSecondaryFontIconDec, LSecondaryFontColor, LSecondaryOpacity);
-    if LSecondaryFontIconDec <> 0 then
-      FIconFont.PaintToGDI(LGPGraphics, X, Y, AWidth, AHeight,
-        LFontName, LSecondaryFontIconDec, LSecondaryFontColor,
-        AEnabled, ADisabledFactor, LSecondaryOpacity, AZoom);
-  finally
-    LGPGraphics.Free;
-  end;
+  ResolveSecondaryIcon(LFontColor, AOpacity, ADuotone, ADuotoneOffset, ADuotoneOpacity,
+    LSecondaryFontIconDec, LSecondaryFontColor, LSecondaryOpacity);
+  IconFontsPaintBuffered(ACanvas.Handle, X, Y, AWidth, AHeight,
+    procedure(const AGraphics: TGPGraphics)
+    begin
+      FIconFont.PaintToGDI(AGraphics, 0, 0, AWidth, AHeight,
+        LFontName, FFontIconDec, LFontColor,
+        AEnabled, ADisabledFactor, AOpacity, AZoom);
+      if LSecondaryFontIconDec <> 0 then
+        FIconFont.PaintToGDI(AGraphics, 0, 0, AWidth, AHeight,
+          LFontName, LSecondaryFontIconDec, LSecondaryFontColor,
+          AEnabled, ADisabledFactor, LSecondaryOpacity, AZoom);
+    end);
   {$ELSE}
   FIconFont.PaintTo(ACanvas, X, Y, AWidth, AHeight, LFontName,
     FFontIconDec, LFontColor, AMaskColor, AEnabled, ADisabledFactor, AZoom);

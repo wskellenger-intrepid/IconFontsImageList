@@ -248,7 +248,6 @@ var
   {$IFDEF GDI+}
   LOpacity: Byte;
   LBounds: TGPRectF;
-  LGraphics: TGPGraphics;
   LSecondaryFontIconDec: Integer;
   LSecondaryFontColor: TColor;
   LSecondaryOpacity: Byte;
@@ -383,19 +382,19 @@ begin
   if not UsingIconFont or (LFontColor <> clDefault) then
   begin
     {$IFDEF GDI+}
-    LGraphics := TGPGraphics.Create(Canvas.Handle);
-    try
-      LIconFont.PaintToGDI(LGraphics,
-        LBounds.X, LBounds.Y, LBounds.Width, LBounds.Height, LFontName,
-          LFontIconDec, LFontColor, Enabled, LDisabledFactor, LOpacity, FZoom);
-      if LSecondaryFontIconDec <> 0 then
-        LIconFont.PaintToGDI(LGraphics,
+    //the buffer covers the whole client area, so LBounds stays in client coordinates
+    IconFontsPaintBuffered(Canvas.Handle, 0, 0, Width, Height,
+      procedure(const AGraphics: TGPGraphics)
+      begin
+        LIconFont.PaintToGDI(AGraphics,
           LBounds.X, LBounds.Y, LBounds.Width, LBounds.Height, LFontName,
-            LSecondaryFontIconDec, LSecondaryFontColor, Enabled, LDisabledFactor,
-            LSecondaryOpacity, FZoom);
-    finally
-      LGraphics.Free;
-    end;
+            LFontIconDec, LFontColor, Enabled, LDisabledFactor, LOpacity, FZoom);
+        if LSecondaryFontIconDec <> 0 then
+          LIconFont.PaintToGDI(AGraphics,
+            LBounds.X, LBounds.Y, LBounds.Width, LBounds.Height, LFontName,
+              LSecondaryFontIconDec, LSecondaryFontColor, Enabled, LDisabledFactor,
+              LSecondaryOpacity, FZoom);
+      end);
     {$ELSE}
       {$IFDEF DXE8+}
       LIconFont.PaintTo(Self.Canvas,
