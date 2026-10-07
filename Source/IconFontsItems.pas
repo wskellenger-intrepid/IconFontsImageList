@@ -1268,23 +1268,28 @@ procedure TIconFont.PaintToGDI(const AGraphics: TGPGraphics;
   const AZoom: Integer = ZOOM_DEFAULT);
 var
   LSolidBrush: TGPSolidBrush;
-  LBounds: TGPRectF;
   LFamily: TGPFontFamily;
   LFont: TGPFont;
   LFontColor: TColor;
+  LFormat: TGPStringFormat;
+  LMeasured: TGPRectF;
   LPoint: TGPPointF;
   S: WideString;
-  LFontSize: Single;
+  LFontSize, LAdvance, LLineHeight: Single;
+
+  function CreateFont(const ASize: Single): TGPFont;
+  begin
+    if Assigned(LFamily) then
+      Result := TGPFont.Create(LFamily, ASize, FontStyleRegular, UnitPixel)
+    else
+      Result := TGPFont.Create(AFontName, ASize, FontStyleRegular, UnitPixel);
+  end;
+
 begin
   LSolidBrush := nil;
   LFont := nil;
   LFamily := nil;
   try
-    LBounds.X := X;
-    LBounds.Y := Y;
-    LBounds.Width := AWidth;
-    LBounds.Height := AHeight;
-
     if not AEnabled then
       LFontColor := DisabledColor(AFontColor,
         Round(DEFAULT_DISABLE_FACTOR * ADisabledFactor / 255))
@@ -1293,32 +1298,38 @@ begin
 
     LSolidBrush := TGPSolidBrush.Create(GPColor(LFontColor, AOpacity));
 
-    LFontSize := AHeight * AZoom / ZOOM_DEFAULT;
-    //A registered memory font wins over an installed one, so every machine draws the same glyphs
-    LFamily := PrivateFontFamily(AFontName);
-    if Assigned(LFamily) then
-      LFont := TGPFont.Create(LFamily, LFontSize, FontStyleRegular, UnitPixel)
-    else
-      LFont := TGPFont.Create(AFontName, LFontSize, FontStyleRegular, UnitPixel);
-
-    AGraphics.SetSmoothingMode(SmoothingModeAntiAlias);
-    AGraphics.SetTextRenderingHint(TextRenderingHintAntiAlias);
-    if AZoom <> 100 then
-    begin
-      LPoint.X := ((LBounds.X + AWidth - (AZoom / ZOOM_DEFAULT * AWidth)) / 2)
-        - ((AZoom / ZOOM_DEFAULT * AWidth) / 6);
-      LPoint.Y := (LBounds.Y + AHeight - (AZoom / ZOOM_DEFAULT * AHeight)) / 2;
-    end
-    else
-    begin
-      LPoint.X := LBounds.X - (AWidth / 6); //Offset to align character to left
-      LPoint.Y := LBounds.Y;
-    end;
-
     {$WARN SYMBOL_DEPRECATED OFF}
     S := ConvertFromUtf32(AFontIconDec);
     {$WARN SYMBOL_DEPRECATED ON}
-    AGraphics.DrawString(S, Length(S), LFont, LPoint, LSolidBrush);
+
+    LFontSize := AHeight * AZoom / ZOOM_DEFAULT;
+    //A registered memory font wins over an installed one, so every machine draws the same glyphs
+    LFamily := PrivateFontFamily(AFontName);
+    LFont := CreateFont(LFontSize);
+
+    AGraphics.SetSmoothingMode(SmoothingModeAntiAlias);
+    AGraphics.SetTextRenderingHint(TextRenderingHintAntiAlias);
+    //Typographic layout adds no padding, so the glyph's advance width can be measured and placed
+    LFormat := TGPStringFormat.GenericTypographic;
+    AGraphics.MeasureString(S, Length(S), LFont, MakePoint(0.0, 0.0), LFormat, LMeasured);
+    LAdvance := LMeasured.Width;
+    LLineHeight := LMeasured.Height;
+    //Icon fonts have glyphs wider than the em (Font Awesome's are up to 1.25em): scale those down to
+    //fit the box, so they do not run into neighbouring text such as a tab or menu caption. They fit
+    //one pixel inside it, as their anti-aliased edges would otherwise spill into the next pixel.
+    if LAdvance > AWidth then
+    begin
+      LLineHeight := LLineHeight * (AWidth - 1) / LAdvance;
+      LFontSize := LFontSize * (AWidth - 1) / LAdvance;
+      LAdvance := AWidth - 1;
+      LFont.Free;
+      LFont := CreateFont(LFontSize);
+    end;
+    //Narrower glyphs are centered across the box. Vertically the line (ascent + descent) is
+    //centered, as icon fonts center their glyphs on it; for Font Awesome that line is the em
+    LPoint.X := X + (AWidth - LAdvance) / 2;
+    LPoint.Y := Y + (AHeight - LLineHeight) / 2;
+    AGraphics.DrawString(S, Length(S), LFont, LPoint, LFormat, LSolidBrush);
   finally
     LFont.Free;
     LFamily.Free;
