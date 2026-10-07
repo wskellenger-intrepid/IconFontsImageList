@@ -407,7 +407,7 @@ begin
     if FFontNamesChecked.IndexOf(AFontName) = -1 then //Speed-up check of a Font already checked
     begin
       FFontNamesChecked.Add(AFontName);
-      if (Screen.Fonts.IndexOf(AFontName) = -1) then
+      if not IconFontsFontAvailable(AFontName) then
       begin
         if Assigned(OnFontMissing) then
           OnFontMissing(AFontName)

@@ -182,7 +182,7 @@ procedure TIconFontImage.CheckFontName(const AFontName: TFontName);
 begin
   if AFontName <> '' then
   begin
-    if (Screen.Fonts.IndexOf(AFontName) = -1) then
+    if not IconFontsFontAvailable(AFontName) then
     begin
       if Assigned(OnFontMissing) then
         OnFontMissing(AFontName)

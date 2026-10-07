@@ -253,6 +253,14 @@ type
 
 function IsFontIconValidValue(const AFontIconDec: Integer): Boolean;
 
+//GDI+, which draws the icons, does not see fonts an application loads from memory with
+//AddFontMemResourceEx. Register those fonts here as well; AData must stay valid while the
+//application runs (resource data does).
+procedure IconFontsAddMemoryFont(const AData: Pointer; const ASize: Integer);
+
+//True if AFontName is installed or was registered with IconFontsAddMemoryFont
+function IconFontsFontAvailable(const AFontName: TFontName): Boolean;
+
 implementation
 
 uses
@@ -273,11 +281,56 @@ uses
 const
   CATEGORY_SEP = '\';
 
+{$IFDEF GDI+}
+var
+  _PrivateFonts: TGPPrivateFontCollection;
+{$ENDIF}
+
 function IsFontIconValidValue(const AFontIconDec: Integer): Boolean;
 begin
   Result := ((AFontIconDec >= $0000) and (AFontIconDec <= $D7FF)) or
     ((AFontIconDec >= $E000) and (AFontIconDec < $FFFF)) or  //D800 to DFFF are reserved for code point values for Surrogate Pairs
     ((AFontIconDec >= $010000) and (AFontIconDec <= $10FFFF)); //Surrogate Pairs
+end;
+
+procedure IconFontsAddMemoryFont(const AData: Pointer; const ASize: Integer);
+begin
+  {$IFDEF GDI+}
+  if not Assigned(_PrivateFonts) then
+    _PrivateFonts := TGPPrivateFontCollection.Create;
+  _PrivateFonts.AddMemoryFont(AData, ASize);
+  {$ENDIF}
+end;
+
+{$IFDEF GDI+}
+//Returns the registered family named AFontName, or nil
+function PrivateFontFamily(const AFontName: TFontName): TGPFontFamily;
+begin
+  Result := nil;
+  if Assigned(_PrivateFonts) then
+  begin
+    Result := TGPFontFamily.Create(AFontName, _PrivateFonts);
+    if Result.GetLastStatus <> Ok then
+      FreeAndNil(Result);
+  end;
+end;
+{$ENDIF}
+
+function IconFontsFontAvailable(const AFontName: TFontName): Boolean;
+{$IFDEF GDI+}
+var
+  LFamily: TGPFontFamily;
+{$ENDIF}
+begin
+  Result := Screen.Fonts.IndexOf(AFontName) <> -1;
+  {$IFDEF GDI+}
+  if not Result then
+  begin
+    LFamily := PrivateFontFamily(AFontName);
+    Result := Assigned(LFamily);
+    LFamily.Free;
+  end;
+  {$ENDIF}
 end;
 
 {$IFDEF GDI+}
@@ -1173,6 +1226,7 @@ procedure TIconFont.PaintToGDI(const AGraphics: TGPGraphics;
 var
   LSolidBrush: TGPSolidBrush;
   LBounds: TGPRectF;
+  LFamily: TGPFontFamily;
   LFont: TGPFont;
   LFontColor: TColor;
   LPoint: TGPPointF;
@@ -1181,6 +1235,7 @@ var
 begin
   LSolidBrush := nil;
   LFont := nil;
+  LFamily := nil;
   try
     LBounds.X := X;
     LBounds.Y := Y;
@@ -1196,7 +1251,12 @@ begin
     LSolidBrush := TGPSolidBrush.Create(GPColor(LFontColor, AOpacity));
 
     LFontSize := AHeight * AZoom / ZOOM_DEFAULT;
-    LFont := TGPFont.Create(AFontName, LFontSize, FontStyleRegular, UnitPixel);
+    //A registered memory font wins over an installed one, so every machine draws the same glyphs
+    LFamily := PrivateFontFamily(AFontName);
+    if Assigned(LFamily) then
+      LFont := TGPFont.Create(LFamily, LFontSize, FontStyleRegular, UnitPixel)
+    else
+      LFont := TGPFont.Create(AFontName, LFontSize, FontStyleRegular, UnitPixel);
 
     AGraphics.SetSmoothingMode(SmoothingModeAntiAlias);
     AGraphics.SetTextRenderingHint(TextRenderingHintAntiAlias);
@@ -1218,9 +1278,18 @@ begin
     AGraphics.DrawString(S, Length(S), LFont, LPoint, LSolidBrush);
   finally
     LFont.Free;
+    LFamily.Free;
     LSolidBrush.Free;
   end;
 end;
+{$ENDIF}
+
+{$IFDEF GDI+}
+initialization
+
+finalization
+  //runs before Winapi.GDIPOBJ shuts GDI+ down
+  _PrivateFonts.Free;
 {$ENDIF}
 
 end.
