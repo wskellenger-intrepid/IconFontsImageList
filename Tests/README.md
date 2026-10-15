@@ -7,7 +7,8 @@ DUnitX console tests for drawing icons through `TIconFontsImageCollection` and
   anti-aliasing on a window. They use the Weather Icons font from `Demo\Fonts`, which is normally not
   installed: that is what lets them tell a registered memory font from an installed one.
 - `IconFontsLayoutTests`: where a glyph lands in its box. One wider than the box is scaled to fit
-  it, one narrower is centered, and one taller overflows rather than being clipped.
+  it, one narrower is centered, and one taller overflows rather than being clipped. A list wider
+  than it is high keeps its size when its font or colors are set.
 - `IconFontsDuotoneTests`: the duotone secondary layer (`Duotone`, `FontColor2`, `FontIcon2Dec`).
 
 The layout and duotone tests use `Fonts\icon-test.ttf`, whose glyphs are plain rectangles (wide,

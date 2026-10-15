@@ -22,6 +22,8 @@ type
     procedure GlyphTallerThanItsBoxIsNotClipped;
     [Test]
     procedure DrawAppliesTheListZoom;
+    [Test]
+    procedure SettingFontOrColorsKeepsANonSquareSize;
   end;
 
 implementation
@@ -29,6 +31,7 @@ implementation
 uses
   System.Types,
   Vcl.Graphics,
+  IconFontsVirtualImageList,
   IconFontsTestUtils;
 
 const
@@ -126,6 +129,25 @@ begin
   Assert.IsTrue(LFull > 0, 'the glyph was not drawn');
   Assert.IsTrue(Abs(LHalf - LFull / 2) <= 1,
     Format('ink is %d px tall at Zoom 50 and %d px at Zoom 100', [LHalf, LFull]));
+end;
+
+procedure TIconFontsLayoutTests.SettingFontOrColorsKeepsANonSquareSize;
+var
+  LList: TIconFontsVirtualImageList;
+begin
+  // 20 wide and 16 high: a 16px em with room for 1.25em glyphs. A .dfm streams FontName after
+  // Width, and that must not make the list square (menus size their rows to its height)
+  LList := TIconFontsVirtualImageList.Create(nil);
+  try
+    LList.Width := 20;
+    LList.FontName := TEST_FONT;
+    LList.FontColor := clRed;
+    LList.MaskColor := clWhite;
+    Assert.AreEqual(20, LList.Width, 'width');
+    Assert.AreEqual(16, LList.Height, 'height');
+  finally
+    LList.Free;
+  end;
 end;
 
 initialization

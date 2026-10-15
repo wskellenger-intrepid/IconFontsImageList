@@ -807,7 +807,10 @@ begin
   try
     if AFontName <> '' then
       FFontName := AFontName;
-    SetIconSize(ASize);
+    //Only a new size squares the list: font and color setters pass the current Size (the larger
+    //side), and a list wider than it is high (room for wide glyphs) must keep its height
+    if ASize <> Size then
+      SetIconSize(ASize);
     FFontColor := AFontColor;
     FMaskColor := AMaskColor;
     if AReplaceFontColor and Assigned(IconFontItems) then
