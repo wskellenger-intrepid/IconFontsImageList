@@ -116,6 +116,7 @@ begin
   if Assigned(LOwn) and (TMethod(LMissing).Code = TMethod(LOwn).Code) and
     (TMethod(LMissing).Data = TMethod(LOwn).Data) then
     FImageCollection.OnFontMissing := nil;
+  FImageCollection.RemoveFreeNotification(Self);
 end;
 
 function TIconFontsVirtualImageList.GetIconFontItems: TIconFontItems;
@@ -151,6 +152,8 @@ begin
     FImageCollection := Value;
     if Assigned(FImageCollection) then
     begin
+      // the collection usually has another owner (a data module), so it can be freed first: be told
+      FImageCollection.FreeNotification(Self);
       FImageCollection.UpdateOwnerAttributes := GetOwnerAttributes;
       FImageCollection.NotifyItemChanged := OnItemChanged;
       FImageCollection.OnFontMissing := OnFontMissing;

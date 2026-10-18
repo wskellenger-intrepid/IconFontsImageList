@@ -20,6 +20,8 @@ type
     procedure AfterTheListIsFreedTheCollectionUsesItsOwnAttributes;
     [Test]
     procedure MovingAListToAnotherCollectionClearsItsCallbacksOnTheFirst;
+    [Test]
+    procedure FreeingTheCollectionFirstLeavesTheListWithout;
   end;
 
 implementation
@@ -164,6 +166,23 @@ begin
     LList.Free;
     LSecond.Free;
     LFirst.Free;
+  end;
+end;
+
+procedure TIconFontsLifetimeTests.FreeingTheCollectionFirstLeavesTheListWithout;
+var
+  LCollection: TIconFontsImageCollection;
+  LList: TIconFontsVirtualImageList;
+begin
+  // components with different owners (a list on a form, the collection on a data module) can be freed in
+  // either order: the list must forget a freed collection rather than detach from it later
+  LCollection := TIconFontsImageCollection.Create(nil);
+  LList := NewList(LCollection);
+  try
+    LCollection.Free;
+    Assert.IsNull(LList.ImageCollection, 'the list still refers to the freed collection');
+  finally
+    LList.Free;
   end;
 end;
 
