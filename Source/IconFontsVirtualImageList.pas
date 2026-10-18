@@ -49,6 +49,7 @@ type
   TIconFontsVirtualImageList = class(TIconFontsImageListBase)
   private
     FImageCollection: TIconFontsImageCollection;
+    procedure DetachFromCollection;
     function GetImageCollection: TIconFontsImageCollection;
     procedure SetImageCollection(const Value: TIconFontsImageCollection);
   protected
@@ -88,7 +89,33 @@ end;
 
 destructor TIconFontsVirtualImageList.Destroy;
 begin
+  DetachFromCollection;
   inherited;
+end;
+
+procedure TIconFontsVirtualImageList.DetachFromCollection;
+// A collection is often shared by several lists (one per form, created and freed as forms open and
+// close), and holds the callbacks of the last list attached. Clear the ones that are still this list's,
+// or the collection calls into a freed list the next time anything draws from it. Callbacks a later
+// list set are left alone.
+var
+  LUpdate: TGetOwnerAttributesProc;
+  LChanged: TIconFontItemChangedProc;
+  LMissing, LOwn: TIconFontMissing;
+begin
+  if not Assigned(FImageCollection) then
+    Exit;
+  LUpdate := FImageCollection.UpdateOwnerAttributes;
+  if TMethod(LUpdate).Data = Pointer(Self) then
+    FImageCollection.UpdateOwnerAttributes := nil;
+  LChanged := FImageCollection.NotifyItemChanged;
+  if TMethod(LChanged).Data = Pointer(Self) then
+    FImageCollection.NotifyItemChanged := nil;
+  LMissing := FImageCollection.OnFontMissing;
+  LOwn := OnFontMissing;
+  if Assigned(LOwn) and (TMethod(LMissing).Code = TMethod(LOwn).Code) and
+    (TMethod(LMissing).Data = TMethod(LOwn).Data) then
+    FImageCollection.OnFontMissing := nil;
 end;
 
 function TIconFontsVirtualImageList.GetIconFontItems: TIconFontItems;
@@ -120,6 +147,7 @@ procedure TIconFontsVirtualImageList.SetImageCollection(
 begin
   if FImageCollection <> Value then
   begin
+    DetachFromCollection;
     FImageCollection := Value;
     if Assigned(FImageCollection) then
     begin

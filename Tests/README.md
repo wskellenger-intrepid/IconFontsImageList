@@ -10,6 +10,9 @@ DUnitX console tests for drawing icons through `TIconFontsImageCollection` and
   it, one narrower is centered, and one taller overflows rather than being clipped. A list wider
   than it is high keeps its size when its font or colors are set.
 - `IconFontsDuotoneTests`: the duotone secondary layer (`Duotone`, `FontColor2`, `FontIcon2Dec`).
+- `IconFontsLifetimeTests`: a collection shared by several virtual image lists keeps the callbacks
+  of the last list attached; freeing that list, or moving it to another collection, must clear them,
+  and must leave a later list's alone.
 
 The layout and duotone tests use `Fonts\icon-test.ttf`, whose glyphs are plain rectangles (wide,
 narrow and tall ones, and a primary layer on the left half of the box with its secondary on the

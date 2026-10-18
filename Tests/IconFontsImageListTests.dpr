@@ -10,7 +10,8 @@ uses
   IconFontsTestUtils in 'IconFontsTestUtils.pas',
   IconFontsRenderingTests in 'IconFontsRenderingTests.pas',
   IconFontsLayoutTests in 'IconFontsLayoutTests.pas',
-  IconFontsDuotoneTests in 'IconFontsDuotoneTests.pas';
+  IconFontsDuotoneTests in 'IconFontsDuotoneTests.pas',
+  IconFontsLifetimeTests in 'IconFontsLifetimeTests.pas';
 
 var
   LRunner: ITestRunner;
