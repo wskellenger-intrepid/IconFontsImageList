@@ -118,7 +118,7 @@ type
     procedure SetDuotoneOpacity(const Value: Byte);
     {$ENDIF}
     procedure SetDisabledFactor(const Value: Byte);
-    function CheckCollection: boolean;
+    function CheckCollection(const AStrict: Boolean = False): boolean;
     procedure SetZoon(const Value: Integer);
   protected
     procedure CheckFontName(const AFontName: TFontName);
@@ -393,10 +393,14 @@ begin
     inherited;
 end;
 
-function TIconFontsImageListBase.CheckCollection: boolean;
+function TIconFontsImageListBase.CheckCollection(const AStrict: Boolean): boolean;
 begin
   Result := Assigned(IconFontItems);
-  if not Result and not (csLoading in ComponentState) then
+  //In the designer a list whose collection lives in another module (a data module) has none until that module
+  //is loaded: drawing and reading then do nothing, as while loading. Only the methods that change the
+  //collection (AStrict) still raise.
+  if not Result and not (csLoading in ComponentState) and
+    (AStrict or not (csDesigning in ComponentState)) then
     raise Exception.CreateFmt(ERR_COLLECTION_NOT_ASSIGNED, [Name]);
 end;
 
@@ -662,7 +666,7 @@ function TIconFontsImageListBase.AddIcons(const AFrom, ATo: Integer;
 var
   LFontName: TFontName;
 begin
-  CheckCollection;
+  CheckCollection(True);
   if AFontName <> '' then
     LFontName := AFontName
   else
@@ -949,7 +953,7 @@ procedure TIconFontsImageListBase.Replace(const AIndex: Integer; const AChar: In
 var
   LIconFontItem: TIconFontItem;
 begin
-  CheckCollection;
+  CheckCollection(True);
   LIconFontItem := IconFontItems.Items[AIndex];
   if Assigned(LIconFontItem) then
     LIconFontItem.FontIconDec := AChar;

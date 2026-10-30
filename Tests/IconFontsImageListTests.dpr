@@ -11,7 +11,8 @@ uses
   IconFontsRenderingTests in 'IconFontsRenderingTests.pas',
   IconFontsLayoutTests in 'IconFontsLayoutTests.pas',
   IconFontsDuotoneTests in 'IconFontsDuotoneTests.pas',
-  IconFontsLifetimeTests in 'IconFontsLifetimeTests.pas';
+  IconFontsLifetimeTests in 'IconFontsLifetimeTests.pas',
+  IconFontsDesignTimeTests in 'IconFontsDesignTimeTests.pas';
 
 var
   LRunner: ITestRunner;

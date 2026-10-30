@@ -13,6 +13,7 @@ DUnitX console tests for drawing icons through `TIconFontsImageCollection` and
 - `IconFontsLifetimeTests`: a collection shared by several virtual image lists keeps the callbacks
   of the last list attached; freeing that list, or moving it to another collection, must clear them,
   and must leave a later list's alone.
+- `IconFontsDesignTimeTests`: a list whose collection is in another module (a data module) has none in the designer until that module is loaded; reading it must not raise there, still raises at run time, and the methods that add or replace icons still raise in the designer.
 
 The layout and duotone tests use `Fonts\icon-test.ttf`, whose glyphs are plain rectangles (wide,
 narrow and tall ones, and a primary layer on the left half of the box with its secondary on the
